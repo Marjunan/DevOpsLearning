@@ -103,4 +103,43 @@ public class ProductApiTests
         Assert.Equal("CI Laptop", products[0].Name);
         Assert.Equal(1000m, products[0].Price);
     }
+
+    [Fact]
+    public async Task PostProduct_WithInvalidPrice_ReturnsBadRequest()
+    {
+        // Arrange
+        var product = new
+        {
+            Name = "Mouse",
+            Price = -50
+        };
+
+        // Act
+        var response = await _client.PostAsJsonAsync(
+            "/api/products",
+            product);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task PostProduct_WithMissingName_ReturnsBadRequest()
+    {
+        // Arrange
+        var product = new
+        {
+            Name = "",
+            Price = 50
+        };
+
+        // Act
+        var response = await _client.PostAsJsonAsync(
+            "/api/products",
+            product);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
 }

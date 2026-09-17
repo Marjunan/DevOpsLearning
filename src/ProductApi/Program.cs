@@ -59,6 +59,23 @@ app.MapGet("/api/products/{id:int}", async (int id, AppDbContext db) =>
 
 app.MapPost("/api/products", async (Product product, AppDbContext db) =>
 {
+    var errors = new Dictionary<string, string[]>();
+
+    if (string.IsNullOrWhiteSpace(product.Name))
+    {
+        errors["Name"] = new[] { "Product name is required." };
+    }
+
+    if (product.Price <= 0)
+    {
+        errors["Price"] = new[] { "Product price must be greater than zero." };
+    }
+
+    if (errors.Count > 0)
+    {
+        return Results.ValidationProblem(errors);
+    }
+
     db.Products.Add(product);
 
     await db.SaveChangesAsync();
