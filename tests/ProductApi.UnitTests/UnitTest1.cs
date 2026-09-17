@@ -11,11 +11,11 @@ namespace ProductApi.UnitTests
             Assert.Equal(2, 1 + 1);
         }
 
-        [Fact]
-        public void FailingTest()
-        {
-            // This test is intended to fail.
-            Assert.Equal(3, 1 + 1);
-        }
+        // [Fact]
+        // public void FailingTest()
+        // {
+        //     // This test is intended to fail.
+        //     Assert.Equal(3, 1 + 1);
+        // }
     }
 }

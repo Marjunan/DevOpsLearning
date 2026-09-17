@@ -1,41 +1,90 @@
+using Microsoft.EntityFrameworkCore;
+using ProductApi.Data;
+using ProductApi.Models;
+using ProductApi.Services;
+
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
-// Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
-builder.Services.AddOpenApi();
+builder.Services.AddDbContext<AppDbContext>(options =>
+    options.UseSqlite("Data Source=products.db"));
+
+builder.Services.AddScoped<ProductService>();
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
+using (var scope = app.Services.CreateScope())
 {
-    app.MapOpenApi();
+    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+    db.Database.EnsureCreated();
+
+    if (!db.Products.Any())
+    {
+        db.Products.AddRange(
+            new Product
+            {
+                Name = "Laptop",
+                Price = 1200m
+            },
+            new Product
+            {
+                Name = "Monitor",
+                Price = 400m
+            },
+            new Product
+            {
+                Name = "Keyboard",
+                Price = 100m
+            });
+
+        db.SaveChanges();
+    }
 }
 
-app.UseHttpsRedirection();
-
-var summaries = new[]
+app.MapGet("/api/products", async (AppDbContext db) =>
 {
-    "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
-};
+    var products = await db.Products.ToListAsync();
 
-app.MapGet("/weatherforecast", () =>
+    return Results.Ok(products);
+});
+
+app.MapGet("/api/products/{id:int}", async (int id, AppDbContext db) =>
 {
-    var forecast =  Enumerable.Range(1, 5).Select(index =>
-        new WeatherForecast
-        (
-            DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
-            Random.Shared.Next(-20, 55),
-            summaries[Random.Shared.Next(summaries.Length)]
-        ))
-        .ToArray();
-    return forecast;
-})
-.WithName("GetWeatherForecast");
+    var product = await db.Products.FindAsync(id);
+
+    return product is null
+        ? Results.NotFound()
+        : Results.Ok(product);
+});
+
+app.MapPost("/api/products", async (Product product, AppDbContext db) =>
+{
+    var errors = new Dictionary<string, string[]>();
+
+    if (string.IsNullOrWhiteSpace(product.Name))
+    {
+        errors["Name"] = new[] { "Product name is required." };
+    }
+
+    if (product.Price <= 0)
+    {
+        errors["Price"] = new[] { "Product price must be greater than zero." };
+    }
+
+    if (errors.Count > 0)
+    {
+        return Results.ValidationProblem(errors);
+    }
+
+    db.Products.Add(product);
+
+    await db.SaveChangesAsync();
+
+    return Results.Created($"/api/products/{product.Id}", product);
+});
 
 app.Run();
 
-record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
+public partial class Program
 {
-    public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
 }
